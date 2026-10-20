@@ -23,6 +23,8 @@ def acquire(item):
     with urllib.request.urlopen(request, timeout=90) as response:
         data = response.read()
     if hashlib.sha256(data).hexdigest() != item['sha256']:
+        print('Response bytes:', len(data), 'URL:', response.url, flush=True)
+        print('Response sample:', repr(data[:1000]), flush=True)
         raise ValueError('Published file differs from approved snapshot: ' + item['path'])
     if target.suffix in text_extensions:
         data = data.decode('utf-8').replace(origin, destination).encode('utf-8')
