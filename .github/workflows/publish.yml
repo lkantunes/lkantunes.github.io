@@ -1,0 +1,50 @@
+name: Publish portfolio to GitHub Pages
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.site/**', '.github/workflows/publish.yml']
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore verified website
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, zipfile
+          root = pathlib.Path('.site')
+          manifest = json.loads((root / 'manifest.json').read_text())
+          archive = pathlib.Path('/tmp/portfolio.zip')
+          with archive.open('wb') as out:
+              for item in manifest['parts']:
+                  data = (root / item['name']).read_bytes()
+                  assert hashlib.sha256(data).hexdigest() == item['sha256'], item['name']
+                  out.write(data)
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == manifest['sha256']
+          target = pathlib.Path('_site').resolve()
+          target.mkdir()
+          with zipfile.ZipFile(archive) as package:
+              for member in package.infolist():
+                  assert (target / member.filename).resolve().is_relative_to(target)
+              package.extractall(target)
+          assert (target / 'index.html').is_file()
+          print('Restored', len(list(target.rglob('*'))), 'site paths')
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
