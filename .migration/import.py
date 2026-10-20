@@ -6,8 +6,10 @@ import pathlib
 import urllib.parse
 import urllib.request
 
-root = pathlib.Path.cwd().resolve()
-manifest = json.loads((root / '.migration/manifest.json').read_text())
+workspace = pathlib.Path.cwd().resolve()
+root = (workspace / '_site').resolve()
+root.mkdir(exist_ok=True)
+manifest = json.loads((workspace / '.migration/manifest.json').read_text())
 origin = manifest['origin']
 destination = manifest['destination']
 text_extensions = {'.html', '.css', '.js', '.xml', '.txt', '.json', '.svg'}
